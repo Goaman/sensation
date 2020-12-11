@@ -56,10 +56,17 @@ for event in dev.read_loop():
         kevent = categorize(event)
 
         # set the keystate for later check if a particular key is pressed or not
+
+        if isinstance(kevent.keycode, list):
+            event_codes = kevent.keycode
+        else:
+            event_codes = [kevent.keycode]
         if event.value == 1:
-            key_states[kevent.keycode] = True
+            for event_code in event_codes:
+                key_states[event_code] = True
         elif event.value == 0:
-            key_states[kevent.keycode] = False
+            for event_code in event_codes:
+                key_states[event_code] = False
 
         # hard code capslock+key_a and capslock+key_s to easily switch on/off the remapping
         if kevent.keycode == 'KEY_CAPSLOCK':
@@ -106,7 +113,9 @@ for event in dev.read_loop():
                         modif_ok = False
                         break
                     up_all_keys()
-                if modif_ok and key == kevent.keycode:
+
+                does_key_match = any(event_key == key for event_key in event_codes)
+                if modif_ok and does_key_match:
                     skip_write = True
                     if isalambda(actions[0]):
                         actions[0]()
@@ -136,7 +145,7 @@ for event in dev.read_loop():
                             ui.syn()
 
                 # allow a key to trigger up back otherwise, a remapping keep repeating
-                elif event.value == 0 and not skip_write and key == kevent.keycode:
+                elif event.value == 0 and not skip_write and does_key_match:
                     if re.match(r"^KEY", actions[0]):
                         ui.write(e.EV_KEY, e.ecodes[actions[0]], event.value)
                         ui.syn()
